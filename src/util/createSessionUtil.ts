@@ -288,11 +288,29 @@ export default class CreateSessionUtil {
         download(message, client, req.logger);
       }
 
+      // Mejorado para incluir todos los tipos de archivos multimedia
       if (
         req.serverOptions?.websocket?.autoDownload ||
-        (req.serverOptions?.webhook?.autoDownload && message.fromMe == false)
+        req.serverOptions?.webhook?.autoDownload
       ) {
-        await autoDownload(client, req, message);
+        // Verificar si es un archivo multimedia o documento
+        if (message && (
+          message['mimetype'] || 
+          message.isMedia || 
+          message.isMMS ||
+          message.type === 'document' ||
+          message.type === 'audio' ||
+          message.type === 'video' ||
+          message.type === 'image' ||
+          message.type === 'sticker'
+        )) {
+          try {
+            await autoDownload(client, req, message);
+            req.logger.info(`AutoDownload completed for message type: ${message.type}, mimetype: ${message.mimetype}`);
+          } catch (error) {
+            req.logger.error(`AutoDownload failed for message type: ${message.type}`, error);
+          }
+        }
       }
 
       req.io.emit('received-message', { response: message });

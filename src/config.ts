@@ -2,7 +2,7 @@ import { ServerOptions } from './types/ServerOptions';
 
 export default {
   secretKey: 'THISISMYSECURETOKEN',
-  host: 'http://localhost',
+  host: 'http://wapconnet-server-nuevo-2.railway.internal',
   port: '21465',
   deviceName: 'WppConnect',
   poweredBy: 'WPPConnect-Server',
@@ -23,7 +23,7 @@ export default {
     onPollResponse: false,
     onRevokedMessage: false,
     onLabelUpdated: false,
-    onSelfMessage: false,
+    onSelfMessage: true, // Habilitado para recibir archivos propios
     ignore: ['status@broadcast'],
   },
   websocket: {
@@ -92,7 +92,7 @@ export default {
     mongoIsRemote: true,
     mongoURLRemote: '',
     mongodbPort: 27017,
-    redisHost: 'localhost',
+    redisHost: 'wapconnet-server-nuevo-2.railway.internal',
     redisPort: 6379,
     redisPassword: '',
     redisDb: 0,

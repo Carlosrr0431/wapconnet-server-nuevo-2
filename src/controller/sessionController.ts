@@ -439,25 +439,73 @@ export async function getMediaByMessage(req: Request, res: Response) {
   try {
     const message = await client.getMessageById(messageId);
 
-    if (!message)
-      res.status(400).json({
+    if (!message) {
+      return res.status(400).json({
         status: 'error',
         message: 'Message not found',
       });
+    }
 
-    if (!(message['mimetype'] || message.isMedia || message.isMMS))
-      res.status(400).json({
+    // Verificar si es multimedia, documento o archivo
+    if (!(
+      message['mimetype'] || 
+      message.isMedia || 
+      message.isMMS ||
+      message.type === 'document' ||
+      message.type === 'audio' ||
+      message.type === 'video' ||
+      message.type === 'image' ||
+      message.type === 'sticker'
+    )) {
+      return res.status(400).json({
         status: 'error',
-        message: 'Message does not contain media',
+        message: 'Message does not contain media or document',
       });
+    }
 
-    const buffer = await client.decryptFile(message);
+    let buffer;
+    try {
+      // Intentar desencriptar primero
+      buffer = await client.decryptFile(message);
+    } catch (decryptError) {
+      req.logger.warn('DecryptFile failed, trying downloadMedia:', decryptError.message);
+      try {
+        // Si falla, intentar descarga directa
+        buffer = await client.downloadMedia(message);
+      } catch (downloadError) {
+        req.logger.error('Both decryptFile and downloadMedia failed:', downloadError);
+        return res.status(500).json({
+          status: 'error',
+          message: 'Failed to download media',
+          error: downloadError.message,
+        });
+      }
+    }
 
-    res
-      .status(200)
-      .json({ base64: buffer.toString('base64'), mimetype: message.mimetype });
+    // Preparar respuesta mejorada
+    const responseData = {
+      status: 'success',
+      messageId: messageId,
+      messageType: message.type,
+      base64: buffer.toString('base64'),
+      mimetype: message.mimetype || 'application/octet-stream',
+      filesize: buffer.length,
+      filename: message.filename || `file_${messageId}`,
+      timestamp: message.timestamp || Date.now(),
+    };
+
+    // Información específica para documentos
+    if (message.type === 'document') {
+      responseData.documentInfo = {
+        title: message.title || message.filename || 'Document',
+        pageCount: message.pageCount || null,
+        fileExtension: message.filename ? message.filename.split('.').pop() : null,
+      };
+    }
+
+    res.status(200).json(responseData);
   } catch (ex) {
-    req.logger.error(ex);
+    req.logger.error('Error in getMediaByMessage:', ex);
     res.status(500).json({
       status: 'error',
       message: 'The session is not active',

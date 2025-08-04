@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "http://localhost:21465/api/{session}",
+      "url": "http://wapconnet-server-nuevo-2.railway.internal:21465/api/{session}",
       "variables": {
         "session": {
           "default": "NERDWHATS_AMERICA",

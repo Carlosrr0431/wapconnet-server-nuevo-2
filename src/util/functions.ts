@@ -160,8 +160,39 @@ export async function callWebHook(
 
 export async function autoDownload(client: any, req: any, message: any) {
   try {
-    if (message && (message['mimetype'] || message.isMedia || message.isMMS)) {
-      const buffer = await client.decryptFile(message);
+    // Verificar si el mensaje contiene multimedia o documentos
+    if (message && (
+      message['mimetype'] || 
+      message.isMedia || 
+      message.isMMS ||
+      message.type === 'document' ||
+      message.type === 'audio' ||
+      message.type === 'video' ||
+      message.type === 'image' ||
+      message.type === 'sticker'
+    )) {
+      req.logger.info(`Processing media download for type: ${message.type}, mimetype: ${message.mimetype}`);
+      
+      let buffer;
+      try {
+        // Intentar desencriptar el archivo
+        buffer = await client.decryptFile(message);
+      } catch (decryptError) {
+        req.logger.warn('DecryptFile failed, trying downloadMedia:', decryptError.message);
+        try {
+          // Si falla, intentar descarga directa
+          buffer = await client.downloadMedia(message);
+        } catch (downloadError) {
+          req.logger.error('Both decryptFile and downloadMedia failed:', downloadError.message);
+          throw downloadError;
+        }
+      }
+
+      if (!buffer) {
+        req.logger.warn('No buffer obtained for media file');
+        return;
+      }
+
       if (
         req.serverOptions.webhook.uploadS3 ||
         req.serverOptions?.websocket?.uploadS3
@@ -191,9 +222,19 @@ export async function autoDownload(client: any, req: any, message: any) {
             ? bucketName +
               `${Math.floor(Math.random() * (999 - 100 + 1)) + 100}`
             : bucketName;
+        
+        // Mejorar la extensión del archivo
+        let fileExtension = 'bin'; // Extensión por defecto
+        if (message.mimetype && mime) {
+          fileExtension = mime.extension(message.mimetype) || 'bin';
+        } else if (message.type === 'document' && message.filename) {
+          const matches = message.filename.match(/\.([^.]+)$/);
+          if (matches) fileExtension = matches[1];
+        }
+        
         const fileName = `${
           config.aws_s3.defaultBucketName ? client.session + '/' : ''
-        }${hashName}.${mime.extension(message.mimetype)}`;
+        }${hashName}.${fileExtension}`;
 
         if (
           !config.aws_s3.defaultBucketName &&
@@ -222,18 +263,48 @@ export async function autoDownload(client: any, req: any, message: any) {
             Bucket: bucketName,
             Key: fileName,
             Body: buffer,
-            ContentType: message.mimetype,
+            ContentType: message.mimetype || 'application/octet-stream',
             ACL: 'public-read',
           })
         );
 
         message.fileUrl = `https://${bucketName}.s3.amazonaws.com/${fileName}`;
+        req.logger.info(`File uploaded to S3: ${message.fileUrl}`);
       } else {
-        message.body = await buffer.toString('base64');
+        // Convertir a base64
+        const base64String = buffer.toString('base64');
+        message.body = base64String;
+        
+        // Agregar información adicional del archivo
+        if (message.type === 'document') {
+          message.documentInfo = {
+            filename: message.filename || 'document',
+            mimetype: message.mimetype || 'application/octet-stream',
+            filesize: buffer.length,
+            base64: base64String
+          };
+        }
+        
+        req.logger.info(`File converted to base64, size: ${buffer.length} bytes, type: ${message.type}`);
       }
+      
+      // Agregar metadatos útiles
+      message.mediaInfo = {
+        type: message.type,
+        mimetype: message.mimetype,
+        filesize: buffer.length,
+        filename: message.filename || `file_${Date.now()}`,
+        downloadedAt: new Date().toISOString()
+      };
     }
   } catch (e) {
-    req.logger.error(e);
+    req.logger.error('AutoDownload error:', e);
+    req.logger.error('Message details:', {
+      type: message?.type,
+      mimetype: message?.mimetype,
+      isMedia: message?.isMedia,
+      isMMS: message?.isMMS
+    });
   }
 }
 

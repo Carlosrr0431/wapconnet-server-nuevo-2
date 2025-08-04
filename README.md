@@ -119,6 +119,34 @@ yarn build
 
 # Configuration
 
+## 🚆 Railway Private Network Setup
+
+This project has been configured to use Railway's private network to optimize resource usage and reduce bandwidth costs. The private network allows services to communicate directly without using external bandwidth.
+
+### Railway Configuration Benefits:
+- ✨ **Cost Savings**: Internal communication doesn't consume external bandwidth
+- ⚡ **Better Performance**: Direct service-to-service communication  
+- 🔒 **Enhanced Security**: Internal traffic not exposed to the internet
+- 📊 **Resource Optimization**: More efficient use of Railway resources
+
+### Private Network Settings:
+- **Internal Domain**: `wapconnet-server-nuevo-2.railway.internal`
+- **Default Port**: `21465`
+- **Redis Connection**: Uses internal network routing
+- **API Endpoints**: Configured for internal communication
+
+### Files Modified for Railway:
+- `src/config.ts` - Updated host and Redis configuration
+- `src/swagger-backup.json` - Updated API documentation URLs
+- Added `RAILWAY_CONFIG.md` - Detailed Railway setup guide
+- Added `railway.env.example` - Environment variables template
+
+For detailed Railway configuration instructions, see [RAILWAY_CONFIG.md](./RAILWAY_CONFIG.md).
+
+---
+
+## Standard Configuration
+
 This server use config.ts file to define some options, default values are:
 
 ```javascript

@@ -1,0 +1,46 @@
+# Docker Compose for Railway Deployment
+# This file contains environment variables and configuration for Railway deployment
+version: "3.8"
+
+services:
+  wppconnect:
+    container_name: wpp-server-railway
+    restart: unless-stopped
+    build:
+      context: .
+    environment:
+      # Railway Private Network Configuration
+      - RAILWAY_PRIVATE_DOMAIN=wapconnet-server-nuevo-2.railway.internal
+      - PORT=21465
+      
+      # Database URLs for Railway Private Network
+      - REDIS_URL=redis://wapconnet-server-nuevo-2.railway.internal:6379
+      - MONGODB_URL=mongodb://wapconnet-server-nuevo-2.railway.internal:27017/tokens
+      
+      # Webhook URLs (adjust if you have webhook services)
+      - WEBHOOK_BASE_URL=http://wapconnet-server-nuevo-2.railway.internal:21465
+      
+      # Logging
+      - LOG_LEVEL=silly
+      
+    volumes:
+      - ./wppconnect_tokens:/usr/src/wpp-server/tokens
+    ports:
+      - "21465:21465"
+    # In Railway, this will use the private network automatically
+    networks:
+      - railway-private
+
+networks:
+  railway-private:
+    # This network will be automatically configured by Railway
+    external: true
+
+volumes:
+  wppconnect_tokens: {}
+
+# Notes for Railway Deployment:
+# 1. Railway will automatically handle the private network routing
+# 2. No need to expose ports externally unless you need public access
+# 3. Use the private network for inter-service communication to save bandwidth
+# 4. Monitor your Railway usage to confirm the bandwidth savings
