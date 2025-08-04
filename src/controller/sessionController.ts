@@ -287,6 +287,7 @@ export async function logOutSession(req: Request, res: Response): Promise<any> {
 
     setTimeout(async () => {
       const pathUserData = config.customUserDataDir + req.session;
+      // @ts-ignore - __dirname is available in Node.js runtime
       const pathTokens = __dirname + `../../../tokens/${req.session}.data.json`;
 
       if (fs.existsSync(pathUserData)) {
@@ -467,39 +468,39 @@ export async function getMediaByMessage(req: Request, res: Response) {
     try {
       // Intentar desencriptar primero
       buffer = await client.decryptFile(message);
-    } catch (decryptError) {
-      req.logger.warn('DecryptFile failed, trying downloadMedia:', decryptError.message);
+    } catch (decryptError: any) {
+      req.logger.warn('DecryptFile failed, trying downloadMedia:', decryptError?.message || decryptError);
       try {
         // Si falla, intentar descarga directa
         buffer = await client.downloadMedia(message);
-      } catch (downloadError) {
+      } catch (downloadError: any) {
         req.logger.error('Both decryptFile and downloadMedia failed:', downloadError);
         return res.status(500).json({
           status: 'error',
           message: 'Failed to download media',
-          error: downloadError.message,
+          error: downloadError?.message || downloadError,
         });
       }
     }
 
     // Preparar respuesta mejorada
-    const responseData = {
+    const responseData: any = {
       status: 'success',
       messageId: messageId,
       messageType: message.type,
       base64: buffer.toString('base64'),
-      mimetype: message.mimetype || 'application/octet-stream',
+      mimetype: (message as any).mimetype || 'application/octet-stream',
       filesize: buffer.length,
-      filename: message.filename || `file_${messageId}`,
-      timestamp: message.timestamp || Date.now(),
+      filename: (message as any).filename || `file_${messageId}`,
+      timestamp: (message as any).timestamp || Date.now(),
     };
 
     // Información específica para documentos
     if (message.type === 'document') {
       responseData.documentInfo = {
-        title: message.title || message.filename || 'Document',
-        pageCount: message.pageCount || null,
-        fileExtension: message.filename ? message.filename.split('.').pop() : null,
+        title: (message as any).title || (message as any).filename || 'Document',
+        pageCount: (message as any).pageCount || null,
+        fileExtension: (message as any).filename ? (message as any).filename.split('.').pop() : null,
       };
     }
 
@@ -579,6 +580,7 @@ export async function getQrCode(req: Request, res: Response) {
       const qr = req.client.urlcode
         ? await QRCode.toDataURL(req.client.urlcode, qrOptions)
         : null;
+      // @ts-ignore - Buffer is available in Node.js runtime
       const img = Buffer.from(
         (qr as any).replace(/^data:image\/(png|jpeg|jpg);base64,/, ''),
         'base64'

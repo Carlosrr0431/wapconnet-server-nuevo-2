@@ -177,13 +177,13 @@ export async function autoDownload(client: any, req: any, message: any) {
       try {
         // Intentar desencriptar el archivo
         buffer = await client.decryptFile(message);
-      } catch (decryptError) {
-        req.logger.warn('DecryptFile failed, trying downloadMedia:', decryptError.message);
+      } catch (decryptError: any) {
+        req.logger.warn('DecryptFile failed, trying downloadMedia:', decryptError?.message || decryptError);
         try {
           // Si falla, intentar descarga directa
           buffer = await client.downloadMedia(message);
-        } catch (downloadError) {
-          req.logger.error('Both decryptFile and downloadMedia failed:', downloadError.message);
+        } catch (downloadError: any) {
+          req.logger.error('Both decryptFile and downloadMedia failed:', downloadError?.message || downloadError);
           throw downloadError;
         }
       }
